@@ -221,6 +221,78 @@ select:focus {
     cursor: pointer;
 }
 
+/* Advanced collapsible section */
+.advanced-section {
+    margin-bottom: 1.5rem;
+    border: 1px solid var(--glass-border);
+    border-radius: 8px;
+    background: rgba(0, 0, 0, 0.15);
+    overflow: hidden;
+}
+
+.advanced-summary {
+    padding: 0.75rem 1rem;
+    cursor: pointer;
+    font-size: 0.9rem;
+    color: var(--text-muted);
+    font-weight: 600;
+    user-select: none;
+    list-style: none;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    transition: color 0.2s, background 0.2s;
+}
+
+.advanced-summary::-webkit-details-marker {
+    display: none;
+}
+
+.advanced-summary::before {
+    content: '▶';
+    font-size: 0.7rem;
+    transition: transform 0.2s;
+    display: inline-block;
+}
+
+details[open] .advanced-summary::before {
+    transform: rotate(90deg);
+}
+
+.advanced-summary:hover {
+    color: var(--text-main);
+    background: rgba(255, 255, 255, 0.04);
+}
+
+.advanced-content {
+    padding: 0.75rem 1rem 1rem;
+    border-top: 1px solid var(--glass-border);
+}
+
+/* Planet positions in result cards */
+.planet-positions {
+    margin-top: 0.75rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid var(--glass-border);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.planet-pos-item {
+    font-size: 0.82rem;
+    color: var(--text-muted);
+    background: rgba(139, 92, 246, 0.08);
+    border: 1px solid rgba(139, 92, 246, 0.2);
+    border-radius: 4px;
+    padding: 0.2rem 0.5rem;
+    white-space: nowrap;
+}
+
+.planet-pos-item strong {
+    color: var(--text-main);
+}
+
 .primary-btn {
     width: 100%;
     padding: 1rem;

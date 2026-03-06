@@ -15,6 +15,7 @@ const copyLinkBtn = document.getElementById('copyLinkBtn');
 const copyLinkMsg = document.getElementById('copyLinkMsg');
 const resultsContent = document.getElementById('resultsContent');
 const statusMessage = document.getElementById('statusMessage');
+const showPlanetPositionsCheckbox = document.getElementById('showPlanetPositions');
 
 // Planet definitions based on request and SwissEph constants
 const S_PLANETS = [
@@ -335,12 +336,26 @@ function findAstrologicalEvents(swe, start, end, groupA, groupB, orb, isOpposedM
             }
         }
 
+        // Capture planet positions at the exact peak JD
+        const planetPositionsA = groupA.map(p => ({
+            name: p.name,
+            symbol: p.symbol,
+            longitude: calculatePosition(swe, bestJd, p.se_id)
+        }));
+        const planetPositionsB = groupB.map(p => ({
+            name: p.name,
+            symbol: p.symbol,
+            longitude: calculatePosition(swe, bestJd, p.se_id)
+        }));
+
         return {
             exactDate: getJSDateFromJd(swe, bestJd),
             maxDistA: bestA,
             maxDistB: bestB,
             maxOppDev: bestOpp,
-            minError: bestError
+            minError: bestError,
+            planetPositionsA,
+            planetPositionsB
         };
     });
 
@@ -392,9 +407,21 @@ function renderResults(results, groupA, groupB, isOpposedMode) {
             `;
         }
 
+        let planetPositionsHtml = '';
+        if (showPlanetPositionsCheckbox.checked) {
+            const allPositions = [...res.planetPositionsA, ...res.planetPositionsB];
+            if (allPositions.length > 0) {
+                const rows = allPositions.map(p =>
+                    `<span class="planet-pos-item">${p.symbol} ${p.name}: <strong>${p.longitude.toFixed(3)}°</strong></span>`
+                ).join('');
+                planetPositionsHtml = `<div class="planet-positions">${rows}</div>`;
+            }
+        }
+
         div.innerHTML = `
             <div class="result-date">${dateStr}</div>
             ${detailsHtml}
+            ${planetPositionsHtml}
         `;
         resultsContent.appendChild(div);
     });
