@@ -392,9 +392,6 @@ function renderResults(results, groupA, groupB, isOpposedMode) {
         let detailsHtml = '';
         if (!isOpposedMode) {
             detailsHtml = `
-                <div class="result-details">
-                    <span>Group A Conjunction</span>
-                </div>
                 <div class="result-orb">Max spread: ${res.maxDistA.toFixed(3)}°</div>
             `;
         } else {
