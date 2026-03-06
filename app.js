@@ -16,13 +16,13 @@ const statusMessage = document.getElementById('statusMessage');
 
 // Planet definitions based on request and SwissEph constants
 const S_PLANETS = [
-    { id: 'sun', symbol: '☀️', name: 'Sun (Surya)', se_id: 0 },
-    { id: 'moon', symbol: '🌙', name: 'Moon (Chandra)', se_id: 1 },
-    { id: 'mars', symbol: '♂️', name: 'Mars (Mangala)', se_id: 4 },
-    { id: 'mercury', symbol: '☿️', name: 'Mercury (Budha)', se_id: 2 },
-    { id: 'jupiter', symbol: '♃', name: 'Jupiter (Brihaspati)', se_id: 5 },
-    { id: 'venus', symbol: '♀️', name: 'Venus (Shukra)', se_id: 3 },
-    { id: 'saturn', symbol: '♄', name: 'Saturn (Shani)', se_id: 6 },
+    { id: 'sun', symbol: '☀️', name: 'Sun', se_id: 0 },
+    { id: 'moon', symbol: '🌙', name: 'Moon', se_id: 1 },
+    { id: 'mars', symbol: '♂️', name: 'Mars', se_id: 4 },
+    { id: 'mercury', symbol: '☿️', name: 'Mercury', se_id: 2 },
+    { id: 'jupiter', symbol: '♃', name: 'Jupiter', se_id: 5 },
+    { id: 'venus', symbol: '♀️', name: 'Venus', se_id: 3 },
+    { id: 'saturn', symbol: '♄', name: 'Saturn', se_id: 6 },
     { id: 'rahu', symbol: '☊', name: 'Rahu (True Node)', se_id: 11 },
     { id: 'ketu', symbol: '☋', name: 'Ketu (Desc Node)', se_id: 'KETU' }
 ];
