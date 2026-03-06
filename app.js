@@ -50,9 +50,19 @@ function initUI() {
     });
 
     searchModeSelect.addEventListener('change', handleModeChange);
+    searchModeSelect.addEventListener('change', saveToLocalStorage);
     findBtn.addEventListener('click', handleFindEvents);
     copyLinkBtn.addEventListener('click', handleCopyLink);
 
+    startDateInput.addEventListener('input', saveToLocalStorage);
+    endDateInput.addEventListener('input', saveToLocalStorage);
+    orbInput.addEventListener('input', saveToLocalStorage);
+
+    // Save when planet checkboxes change (delegated on grids)
+    planetsGridA.addEventListener('change', saveToLocalStorage);
+    planetsGridB.addEventListener('change', saveToLocalStorage);
+
+    loadFromLocalStorage();
     loadFromURLParams();
 }
 
@@ -422,6 +432,49 @@ function handleCopyLink() {
         // Fallback for browsers without clipboard API
         prompt('Copy this link:', url);
     });
+}
+
+const LS_KEY = 'aspects_config';
+
+function saveToLocalStorage() {
+    const planetsA = Array.from(document.querySelectorAll('input[data-group="A"]:checked')).map(cb => cb.value);
+    const planetsB = Array.from(document.querySelectorAll('input[data-group="B"]:checked')).map(cb => cb.value);
+    const config = {
+        startDate: startDateInput.value,
+        endDate: endDateInput.value,
+        orb: orbInput.value,
+        searchMode: searchModeSelect.value,
+        planetsA,
+        planetsB
+    };
+    localStorage.setItem(LS_KEY, JSON.stringify(config));
+}
+
+function loadFromLocalStorage() {
+    const raw = localStorage.getItem(LS_KEY);
+    if (!raw) return;
+    try {
+        const config = JSON.parse(raw);
+        if (config.startDate) startDateInput.value = config.startDate;
+        if (config.endDate) endDateInput.value = config.endDate;
+        if (config.orb !== undefined) orbInput.value = config.orb;
+        if (config.searchMode && ['conjunct', 'opposed'].includes(config.searchMode)) {
+            searchModeSelect.value = config.searchMode;
+            handleModeChange();
+        }
+        if (Array.isArray(config.planetsA)) {
+            document.querySelectorAll('input[data-group="A"]').forEach(cb => {
+                cb.checked = config.planetsA.includes(cb.value);
+            });
+        }
+        if (Array.isArray(config.planetsB)) {
+            document.querySelectorAll('input[data-group="B"]').forEach(cb => {
+                cb.checked = config.planetsB.includes(cb.value);
+            });
+        }
+    } catch (e) {
+        // Ignore corrupt data
+    }
 }
 
 function loadFromURLParams() {
