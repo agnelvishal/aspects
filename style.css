@@ -270,7 +270,7 @@ select:focus {
 }
 
 .results-content {
-    max-height: 500px;
+    max-height: 1500px;
     overflow-y: auto;
     padding-right: 0.5rem;
 }
