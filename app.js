@@ -11,6 +11,8 @@ const startDateInput = document.getElementById('startDate');
 const endDateInput = document.getElementById('endDate');
 const orbInput = document.getElementById('orb');
 const findBtn = document.getElementById('findBtn');
+const copyLinkBtn = document.getElementById('copyLinkBtn');
+const copyLinkMsg = document.getElementById('copyLinkMsg');
 const resultsContent = document.getElementById('resultsContent');
 const statusMessage = document.getElementById('statusMessage');
 
@@ -49,6 +51,9 @@ function initUI() {
 
     searchModeSelect.addEventListener('change', handleModeChange);
     findBtn.addEventListener('click', handleFindEvents);
+    copyLinkBtn.addEventListener('click', handleCopyLink);
+
+    loadFromURLParams();
 }
 
 function createCheckboxLabel(planet, groupPrefix) {
@@ -383,6 +388,73 @@ function renderResults(results, groupA, groupB, isOpposedMode) {
         `;
         resultsContent.appendChild(div);
     });
+}
+
+function buildConfigURL() {
+    const params = new URLSearchParams();
+    params.set('startDate', startDateInput.value);
+    params.set('endDate', endDateInput.value);
+    params.set('orb', orbInput.value);
+    params.set('searchMode', searchModeSelect.value);
+
+    const planetsA = Array.from(document.querySelectorAll('input[data-group="A"]:checked')).map(cb => cb.value);
+    if (planetsA.length > 0) params.set('planetsA', planetsA.join(','));
+
+    const planetsB = Array.from(document.querySelectorAll('input[data-group="B"]:checked')).map(cb => cb.value);
+    if (planetsB.length > 0) params.set('planetsB', planetsB.join(','));
+
+    const url = new URL(window.location.href);
+    url.search = params.toString();
+    return url.toString();
+}
+
+let copyLinkTimeout = null;
+
+function handleCopyLink() {
+    const url = buildConfigURL();
+    navigator.clipboard.writeText(url).then(() => {
+        copyLinkMsg.classList.remove('hidden');
+        if (copyLinkTimeout) clearTimeout(copyLinkTimeout);
+        copyLinkTimeout = setTimeout(() => {
+            copyLinkMsg.classList.add('hidden');
+        }, 2000);
+    }).catch(() => {
+        // Fallback for browsers without clipboard API
+        prompt('Copy this link:', url);
+    });
+}
+
+function loadFromURLParams() {
+    const params = new URLSearchParams(window.location.search);
+
+    if (params.has('startDate')) {
+        startDateInput.value = params.get('startDate');
+    }
+    if (params.has('endDate')) {
+        endDateInput.value = params.get('endDate');
+    }
+    if (params.has('orb')) {
+        orbInput.value = params.get('orb');
+    }
+    if (params.has('searchMode')) {
+        const mode = params.get('searchMode');
+        if (['conjunct', 'opposed'].includes(mode)) {
+            searchModeSelect.value = mode;
+            handleModeChange();
+        }
+    }
+    if (params.has('planetsA')) {
+        const ids = params.get('planetsA').split(',').map(s => s.trim());
+        document.querySelectorAll('input[data-group="A"]').forEach(cb => {
+            cb.checked = ids.includes(cb.value);
+        });
+    }
+    if (params.has('planetsB')) {
+        const ids = params.get('planetsB').split(',').map(s => s.trim());
+        document.querySelectorAll('input[data-group="B"]').forEach(cb => {
+            cb.checked = ids.includes(cb.value);
+        });
+    }
 }
 
 // Init when DOM loaded
