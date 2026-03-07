@@ -752,9 +752,20 @@ function parseEventsForDate(wikitext, month, day) {
     return events;
 }
 
+const WIKI_DAYS_WINDOW = 4;
+
+/**
+ * Add days to a UTC Date and return a new Date.
+ */
+function addDaysUTC(date, days) {
+    const result = new Date(date);
+    result.setUTCDate(result.getUTCDate() + days);
+    return result;
+}
+
 /**
  * After rendering results, fetch Wikipedia events for each result date
- * and append them as bullet lists to each result card.
+ * (±WIKI_DAYS_WINDOW days) and append them as bullet lists to each result card.
  */
 async function appendWikiEventsToResults(results) {
     const cards = resultsContent.querySelectorAll('.result-card');
@@ -765,30 +776,50 @@ async function appendWikiEventsToResults(results) {
         const card = cards[i];
         if (!card) continue;
 
-        const date = res.exactDate;
-        const year = date.getUTCFullYear();
-        const month = date.getUTCMonth() + 1;
-        const day = date.getUTCDate();
+        const exactDate = res.exactDate;
 
         // Add a loading placeholder
         const wikiSection = document.createElement('div');
         wikiSection.className = 'wiki-events';
-        wikiSection.innerHTML = `<div class="wiki-events-loading">📰 Loading Wikipedia events for ${MONTH_NAMES_WIKI[month - 1]} ${day}…</div>`;
+        wikiSection.innerHTML = `<div class="wiki-events-loading">📰 Loading Wikipedia events (±${WIKI_DAYS_WINDOW} days)…</div>`;
         card.appendChild(wikiSection);
 
         try {
-            const wikitext = await fetchWikitext(year);
-            const events = parseEventsForDate(wikitext, month, day);
+            const dayEntries = [];
 
-            if (events.length > 0) {
-                const dateLabel = `${MONTH_NAMES_WIKI[month - 1]} ${day}, ${year}`;
-                const listItems = events.map(e => `<li>${e}</li>`).join('');
+            for (let offset = -WIKI_DAYS_WINDOW; offset <= WIKI_DAYS_WINDOW; offset++) {
+                const targetDate = addDaysUTC(exactDate, offset);
+                const year = targetDate.getUTCFullYear();
+                const month = targetDate.getUTCMonth() + 1;
+                const day = targetDate.getUTCDate();
+
+                const wikitext = await fetchWikitext(year);
+                const events = parseEventsForDate(wikitext, month, day);
+
+                if (events.length > 0) {
+                    dayEntries.push({ offset, month, day, year, events });
+                }
+            }
+
+            if (dayEntries.length > 0) {
+                const sections = dayEntries.map(entry => {
+                    const dateLabel = `${MONTH_NAMES_WIKI[entry.month - 1]} ${entry.day}, ${entry.year}`;
+                    const offsetLabel = entry.offset === 0 ? 'exact' : (entry.offset > 0 ? `+${entry.offset}d` : `${entry.offset}d`);
+                    const listItems = entry.events.map(e => `<li>${e}</li>`).join('');
+                    return `
+                        <div class="wiki-day-section">
+                            <div class="wiki-day-label">📅 ${dateLabel} <span class="wiki-day-offset">(${offsetLabel})</span></div>
+                            <ul class="wiki-events-list">${listItems}</ul>
+                        </div>
+                    `;
+                }).join('');
+
                 wikiSection.innerHTML = `
-                    <div class="wiki-events-title">📰 Historical events on ${dateLabel}:</div>
-                    <ul class="wiki-events-list">${listItems}</ul>
+                    <div class="wiki-events-title">📰 Historical events around this date:</div>
+                    ${sections}
                 `;
             } else {
-                wikiSection.innerHTML = `<div class="wiki-events-empty">📰 No Wikipedia events found for ${MONTH_NAMES_WIKI[month - 1]} ${day}, ${year}.</div>`;
+                wikiSection.innerHTML = `<div class="wiki-events-empty">📰 No Wikipedia events found in the ±${WIKI_DAYS_WINDOW}-day window.</div>`;
             }
         } catch (err) {
             wikiSection.innerHTML = `<div class="wiki-events-error">⚠️ Could not fetch Wikipedia events: ${err.message}</div>`;

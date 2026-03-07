@@ -544,3 +544,20 @@ details[open] .advanced-summary::before {
 .wiki-events-error {
     color: var(--error);
 }
+
+.wiki-day-section {
+    margin-top: 0.5rem;
+}
+
+.wiki-day-label {
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--accent);
+    margin-bottom: 0.2rem;
+}
+
+.wiki-day-offset {
+    font-weight: 400;
+    color: var(--text-muted);
+    font-size: 0.78rem;
+}
