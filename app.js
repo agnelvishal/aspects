@@ -16,6 +16,7 @@ const copyLinkBtn = document.getElementById('copyLinkBtn');
 const copyLinkMsg = document.getElementById('copyLinkMsg');
 const resultsContent = document.getElementById('resultsContent');
 const statusMessage = document.getElementById('statusMessage');
+const resultsStatusMessage = document.getElementById('resultsStatusMessage');
 const showAspectedPlanetPositionsCheckbox = document.getElementById('showAspectedPlanetPositions');
 const showAllPlanetsPositionCheckbox = document.getElementById('showAllPlanetsPosition');
 
@@ -108,10 +109,13 @@ function handleModeChange() {
 function showStatus(msg, isError = false) {
     statusMessage.textContent = msg;
     statusMessage.className = `status-msg ${isError ? 'error' : ''}`;
+    resultsStatusMessage.textContent = msg;
+    resultsStatusMessage.className = `status-msg ${isError ? 'error' : ''}`;
 }
 
 function hideStatus() {
     statusMessage.className = 'status-msg hidden';
+    resultsStatusMessage.className = 'status-msg hidden';
 }
 
 function getSelectedPlanets(groupPrefix) {
