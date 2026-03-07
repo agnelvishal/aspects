@@ -19,6 +19,7 @@ const statusMessage = document.getElementById('statusMessage');
 const resultsStatusMessage = document.getElementById('resultsStatusMessage');
 const showAspectedPlanetPositionsCheckbox = document.getElementById('showAspectedPlanetPositions');
 const showAllPlanetsPositionCheckbox = document.getElementById('showAllPlanetsPosition');
+const fetchWikiEventsCheckbox = document.getElementById('fetchWikiEvents');
 
 let currentResults = [];
 let currentSearchMode = '';
@@ -218,6 +219,10 @@ async function handleFindEvents() {
 
         renderResults(currentResults, groupA, groupB, isOpposedMode);
         hideStatus();
+
+        if (fetchWikiEventsCheckbox.checked) {
+            appendWikiEventsToResults(currentResults);
+        }
     } catch (e) {
         console.error(e);
         showStatus(`Error: ${e.message}`, true);
@@ -564,7 +569,8 @@ function saveToLocalStorage() {
         planetsA,
         planetsB,
         showAspectedPlanetPositions: showAspectedPlanetPositionsCheckbox.checked,
-        showAllPlanetsPosition: showAllPlanetsPositionCheckbox.checked
+        showAllPlanetsPosition: showAllPlanetsPositionCheckbox.checked,
+        fetchWikiEvents: fetchWikiEventsCheckbox.checked
     };
     localStorage.setItem(LS_KEY, JSON.stringify(config));
 }
@@ -596,6 +602,9 @@ function loadFromLocalStorage() {
         }
         if (config.showAllPlanetsPosition !== undefined) {
             showAllPlanetsPositionCheckbox.checked = config.showAllPlanetsPosition;
+        }
+        if (config.fetchWikiEvents !== undefined) {
+            fetchWikiEventsCheckbox.checked = config.fetchWikiEvents;
         }
     } catch (e) {
         // Ignore corrupt data
@@ -638,6 +647,152 @@ function loadFromURLParams() {
     }
     if (params.has('showAllPlanetsPosition')) {
         showAllPlanetsPositionCheckbox.checked = params.get('showAllPlanetsPosition') === '1';
+    }
+    if (params.has('fetchWikiEvents')) {
+        fetchWikiEventsCheckbox.checked = params.get('fetchWikiEvents') === '1';
+    }
+}
+
+// ─── Wikipedia Historical Events ────────────────────────────────────────────
+
+const MONTH_NAMES_WIKI = [
+    'January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December'
+];
+
+// Cache wikitext per year to avoid redundant HTTP requests
+const wikitextCache = {};
+
+/**
+ * Fetches the raw wikitext for a given year's Wikipedia page via the public API.
+ */
+async function fetchWikitext(year) {
+    if (wikitextCache[year]) return wikitextCache[year];
+    const url = `https://en.wikipedia.org/w/api.php?action=parse&page=${year}&prop=wikitext&format=json&origin=*`;
+    const response = await fetch(url, {
+        headers: {
+            'User-Agent': 'AspectsApp/1.0 (planetary conjunction finder)'
+        }
+    });
+    if (!response.ok) throw new Error(`Wikipedia API HTTP error: ${response.status}`);
+    const data = await response.json();
+    if (data.error) throw new Error(`Wikipedia API error: ${data.error.info}`);
+    const wikitext = data.parse.wikitext['*'];
+    wikitextCache[year] = wikitext;
+    return wikitext;
+}
+
+/**
+ * Strips wiki markup from a string, returning plain text.
+ */
+function stripWikiMarkup(text) {
+    text = text.replace(/\[\[(?:[^\]|]*\|)?([^\]]+)\]\]/g, '$1');
+    text = text.replace(/\{\{[^}]*\}\}/g, '');
+    text = text.replace(/'{2,3}/g, '');
+    text = text.replace(/<ref[^>]*>[\s\S]*?<\/ref>/gi, '');
+    text = text.replace(/<ref[^>]*\/>/gi, '');
+    text = text.replace(/<[^>]+>/g, '');
+    text = text.replace(/\s+/g, ' ').trim();
+    return text;
+}
+
+/**
+ * Parses events for a specific date from the wikitext.
+ */
+function parseEventsForDate(wikitext, month, day) {
+    const monthName = MONTH_NAMES_WIKI[month - 1];
+
+    const eventsSectionMatch = wikitext.match(/==\s*Events\s*==([\s\S]*?)(?=\n==\s*[^=])/);
+    if (!eventsSectionMatch) return [];
+    const eventsSection = eventsSectionMatch[1];
+
+    const monthPattern = new RegExp(
+        `===\\s*${monthName}[^=]*===([\\s\\S]*?)(?====|$)`
+    );
+    const monthMatch = eventsSection.match(monthPattern);
+    if (!monthMatch) return [];
+    const monthSection = monthMatch[1];
+
+    const events = [];
+    const lines = monthSection.split('\n');
+    let inTargetDate = false;
+
+    for (let i = 0; i < lines.length; i++) {
+        const line = lines[i].trim();
+        if (!line) continue;
+
+        const dateLineMatch = line.match(/^\*\s*(?:\[\[)?(\w+ \d+)(?:\]\])?/);
+        if (dateLineMatch) {
+            const dateStr = dateLineMatch[1];
+            const [mName, dStr] = dateStr.split(' ');
+            const lineMonth = MONTH_NAMES_WIKI.indexOf(mName) + 1;
+            const lineDay = parseInt(dStr, 10);
+
+            if (lineMonth === month && lineDay === day) {
+                inTargetDate = true;
+                const afterDate = line.replace(/^\*\s*(?:\[\[)?(\w+ \d+)(?:\]\])?/, '').trim();
+                if (afterDate) {
+                    const eventText = afterDate.replace(/^[–\-]\s*/, '').trim();
+                    if (eventText) events.push(stripWikiMarkup(eventText));
+                }
+            } else {
+                if (inTargetDate) break;
+                inTargetDate = false;
+            }
+        } else if (inTargetDate) {
+            if (line.startsWith('**')) {
+                const subEvent = line.replace(/^\*+\s*/, '').trim();
+                if (subEvent) events.push(stripWikiMarkup(subEvent));
+            } else if (line.startsWith('*')) {
+                break;
+            }
+        }
+    }
+
+    return events;
+}
+
+/**
+ * After rendering results, fetch Wikipedia events for each result date
+ * and append them as bullet lists to each result card.
+ */
+async function appendWikiEventsToResults(results) {
+    const cards = resultsContent.querySelectorAll('.result-card');
+    if (cards.length === 0) return;
+
+    for (let i = 0; i < results.length; i++) {
+        const res = results[i];
+        const card = cards[i];
+        if (!card) continue;
+
+        const date = res.exactDate;
+        const year = date.getUTCFullYear();
+        const month = date.getUTCMonth() + 1;
+        const day = date.getUTCDate();
+
+        // Add a loading placeholder
+        const wikiSection = document.createElement('div');
+        wikiSection.className = 'wiki-events';
+        wikiSection.innerHTML = `<div class="wiki-events-loading">📰 Loading Wikipedia events for ${MONTH_NAMES_WIKI[month - 1]} ${day}…</div>`;
+        card.appendChild(wikiSection);
+
+        try {
+            const wikitext = await fetchWikitext(year);
+            const events = parseEventsForDate(wikitext, month, day);
+
+            if (events.length > 0) {
+                const dateLabel = `${MONTH_NAMES_WIKI[month - 1]} ${day}, ${year}`;
+                const listItems = events.map(e => `<li>${e}</li>`).join('');
+                wikiSection.innerHTML = `
+                    <div class="wiki-events-title">📰 Historical events on ${dateLabel}:</div>
+                    <ul class="wiki-events-list">${listItems}</ul>
+                `;
+            } else {
+                wikiSection.innerHTML = `<div class="wiki-events-empty">📰 No Wikipedia events found for ${MONTH_NAMES_WIKI[month - 1]} ${day}, ${year}.</div>`;
+            }
+        } catch (err) {
+            wikiSection.innerHTML = `<div class="wiki-events-error">⚠️ Could not fetch Wikipedia events: ${err.message}</div>`;
+        }
     }
 }
 

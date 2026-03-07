@@ -1,5 +1,10 @@
 Read current code.
 
+The code in /home/watcher/code/event-analyzer/scripts/fetch_events.js has code to fetch news for particular day.
+Can you add checkbox in advanced, which when checked, fetches news just like that code and places in results as bullet for days in results.
+
+---
+
 Provide option to download results in csv.
 
 Need to find conjunctions between 2 or more planets across a time range.

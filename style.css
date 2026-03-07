@@ -505,3 +505,42 @@ details[open] .advanced-summary::before {
         opacity: 0.6;
     }
 }
+
+/* Wikipedia historical events section inside result cards */
+.wiki-events {
+    margin-top: 0.75rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid var(--glass-border);
+}
+
+.wiki-events-title {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    margin-bottom: 0.4rem;
+}
+
+.wiki-events-list {
+    list-style: disc;
+    padding-left: 1.25rem;
+    margin: 0;
+}
+
+.wiki-events-list li {
+    font-size: 0.82rem;
+    color: var(--text-main);
+    margin-bottom: 0.25rem;
+    line-height: 1.5;
+}
+
+.wiki-events-loading,
+.wiki-events-empty,
+.wiki-events-error {
+    font-size: 0.82rem;
+    color: var(--text-muted);
+    font-style: italic;
+}
+
+.wiki-events-error {
+    color: var(--error);
+}
