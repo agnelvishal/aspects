@@ -16,7 +16,8 @@ const copyLinkBtn = document.getElementById('copyLinkBtn');
 const copyLinkMsg = document.getElementById('copyLinkMsg');
 const resultsContent = document.getElementById('resultsContent');
 const statusMessage = document.getElementById('statusMessage');
-const showPlanetPositionsCheckbox = document.getElementById('showPlanetPositions');
+const showAspectedPlanetPositionsCheckbox = document.getElementById('showAspectedPlanetPositions');
+const showAllPlanetsPositionCheckbox = document.getElementById('showAllPlanetsPosition');
 
 let currentResults = [];
 let currentSearchMode = '';
@@ -67,7 +68,8 @@ function initUI() {
     // Save when planet checkboxes change (delegated on grids)
     planetsGridA.addEventListener('change', saveToLocalStorage);
     planetsGridB.addEventListener('change', saveToLocalStorage);
-    showPlanetPositionsCheckbox.addEventListener('change', saveToLocalStorage);
+    showAspectedPlanetPositionsCheckbox.addEventListener('change', saveToLocalStorage);
+    showAllPlanetsPositionCheckbox.addEventListener('change', saveToLocalStorage);
 
     loadFromLocalStorage();
     loadFromURLParams();
@@ -356,6 +358,13 @@ function findAstrologicalEvents(swe, start, end, groupA, groupB, orb, isOpposedM
             longitude: calculatePosition(swe, bestJd, p.se_id)
         }));
 
+        // Capture all planets positions at the exact peak JD
+        const allPlanetPositions = S_PLANETS.map(p => ({
+            name: p.name,
+            symbol: p.symbol,
+            longitude: calculatePosition(swe, bestJd, p.se_id)
+        }));
+
         return {
             exactDate: getJSDateFromJd(swe, bestJd),
             maxDistA: bestA,
@@ -363,7 +372,8 @@ function findAstrologicalEvents(swe, start, end, groupA, groupB, orb, isOpposedM
             maxOppDev: bestOpp,
             minError: bestError,
             planetPositionsA,
-            planetPositionsB
+            planetPositionsB,
+            allPlanetPositions
         };
     });
 
@@ -415,14 +425,20 @@ function renderResults(results, groupA, groupB, isOpposedMode) {
         }
 
         let planetPositionsHtml = '';
-        if (showPlanetPositionsCheckbox.checked) {
-            const allPositions = [...res.planetPositionsA, ...res.planetPositionsB];
-            if (allPositions.length > 0) {
-                const rows = allPositions.map(p =>
+        if (showAspectedPlanetPositionsCheckbox.checked) {
+            const aspectedPositions = [...res.planetPositionsA, ...res.planetPositionsB];
+            if (aspectedPositions.length > 0) {
+                const rows = aspectedPositions.map(p =>
                     `<span class="planet-pos-item">${p.symbol} ${p.name}: <strong>${p.longitude.toFixed(3)}°</strong></span>`
                 ).join('');
-                planetPositionsHtml = `<div class="planet-positions">${rows}</div>`;
+                planetPositionsHtml += `<div class="planet-positions">${rows}</div>`;
             }
+        }
+        if (showAllPlanetsPositionCheckbox.checked && res.allPlanetPositions) {
+            const rows = res.allPlanetPositions.map(p =>
+                `<span class="planet-pos-item">${p.symbol} ${p.name}: <strong>${p.longitude.toFixed(3)}°</strong></span>`
+            ).join('');
+            planetPositionsHtml += `<div class="planet-positions">${rows}</div>`;
         }
 
         div.innerHTML = `
@@ -497,6 +513,9 @@ function buildConfigURL() {
     const planetsB = Array.from(document.querySelectorAll('input[data-group="B"]:checked')).map(cb => cb.value);
     if (planetsB.length > 0) params.set('planetsB', planetsB.join(','));
 
+    if (showAspectedPlanetPositionsCheckbox.checked) params.set('showAspectedPlanetPositions', '1');
+    if (showAllPlanetsPositionCheckbox.checked) params.set('showAllPlanetsPosition', '1');
+
     const url = new URL(window.location.href);
     url.search = params.toString();
     return url.toString();
@@ -530,7 +549,8 @@ function saveToLocalStorage() {
         searchMode: searchModeSelect.value,
         planetsA,
         planetsB,
-        showPlanetPositions: showPlanetPositionsCheckbox.checked
+        showAspectedPlanetPositions: showAspectedPlanetPositionsCheckbox.checked,
+        showAllPlanetsPosition: showAllPlanetsPositionCheckbox.checked
     };
     localStorage.setItem(LS_KEY, JSON.stringify(config));
 }
@@ -557,8 +577,11 @@ function loadFromLocalStorage() {
                 cb.checked = config.planetsB.includes(cb.value);
             });
         }
-        if (config.showPlanetPositions !== undefined) {
-            showPlanetPositionsCheckbox.checked = config.showPlanetPositions;
+        if (config.showAspectedPlanetPositions !== undefined) {
+            showAspectedPlanetPositionsCheckbox.checked = config.showAspectedPlanetPositions;
+        }
+        if (config.showAllPlanetsPosition !== undefined) {
+            showAllPlanetsPositionCheckbox.checked = config.showAllPlanetsPosition;
         }
     } catch (e) {
         // Ignore corrupt data
@@ -595,6 +618,12 @@ function loadFromURLParams() {
         document.querySelectorAll('input[data-group="B"]').forEach(cb => {
             cb.checked = ids.includes(cb.value);
         });
+    }
+    if (params.has('showAspectedPlanetPositions')) {
+        showAspectedPlanetPositionsCheckbox.checked = params.get('showAspectedPlanetPositions') === '1';
+    }
+    if (params.has('showAllPlanetsPosition')) {
+        showAllPlanetsPositionCheckbox.checked = params.get('showAllPlanetsPosition') === '1';
     }
 }
 
