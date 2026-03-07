@@ -454,6 +454,7 @@ function handleDownloadCSV() {
     if (!currentResults || currentResults.length === 0) return;
 
     const isOpposed = currentSearchMode === 'opposed';
+    const includeAllPlanets = showAllPlanetsPositionCheckbox.checked;
     const headers = ['Date', 'Mode'];
 
     if (isOpposed) {
@@ -462,10 +463,15 @@ function handleDownloadCSV() {
         headers.push('Max Spread');
     }
 
-    // Add headers for all planets in results
+    // Add headers for aspected planets
     const firstResult = currentResults[0];
-    const allPlanets = [...firstResult.planetPositionsA, ...firstResult.planetPositionsB];
-    allPlanets.forEach(p => headers.push(`${p.name} Longitude`));
+    const aspectedPlanets = [...firstResult.planetPositionsA, ...firstResult.planetPositionsB];
+    aspectedPlanets.forEach(p => headers.push(`${p.name} Longitude`));
+
+    // Add headers for all planets if checkbox is checked
+    if (includeAllPlanets && firstResult.allPlanetPositions) {
+        firstResult.allPlanetPositions.forEach(p => headers.push(`All: ${p.name} Longitude`));
+    }
 
     const csvRows = [headers.join(',')];
 
@@ -484,6 +490,10 @@ function handleDownloadCSV() {
 
         const planetPositions = [...res.planetPositionsA, ...res.planetPositionsB];
         planetPositions.forEach(p => row.push(p.longitude.toFixed(4)));
+
+        if (includeAllPlanets && res.allPlanetPositions) {
+            res.allPlanetPositions.forEach(p => row.push(p.longitude.toFixed(4)));
+        }
 
         csvRows.push(row.join(','));
     });
