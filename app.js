@@ -11,11 +11,15 @@ const startDateInput = document.getElementById('startDate');
 const endDateInput = document.getElementById('endDate');
 const orbInput = document.getElementById('orb');
 const findBtn = document.getElementById('findBtn');
+const downloadCSVBtn = document.getElementById('downloadCSVBtn');
 const copyLinkBtn = document.getElementById('copyLinkBtn');
 const copyLinkMsg = document.getElementById('copyLinkMsg');
 const resultsContent = document.getElementById('resultsContent');
 const statusMessage = document.getElementById('statusMessage');
 const showPlanetPositionsCheckbox = document.getElementById('showPlanetPositions');
+
+let currentResults = [];
+let currentSearchMode = '';
 
 // Planet definitions based on request and SwissEph constants
 const S_PLANETS = [
@@ -53,6 +57,7 @@ function initUI() {
     searchModeSelect.addEventListener('change', handleModeChange);
     searchModeSelect.addEventListener('change', saveToLocalStorage);
     findBtn.addEventListener('click', handleFindEvents);
+    downloadCSVBtn.addEventListener('click', handleDownloadCSV);
     copyLinkBtn.addEventListener('click', handleCopyLink);
 
     startDateInput.addEventListener('input', saveToLocalStorage);
@@ -62,6 +67,7 @@ function initUI() {
     // Save when planet checkboxes change (delegated on grids)
     planetsGridA.addEventListener('change', saveToLocalStorage);
     planetsGridB.addEventListener('change', saveToLocalStorage);
+    showPlanetPositionsCheckbox.addEventListener('change', saveToLocalStorage);
 
     loadFromLocalStorage();
     loadFromURLParams();
@@ -186,6 +192,7 @@ async function handleFindEvents() {
     findBtn.disabled = true;
     showStatus('Initializing ephemeris...');
     resultsContent.innerHTML = '';
+    currentResults = [];
 
     let swe = null;
     try {
@@ -200,9 +207,10 @@ async function handleFindEvents() {
         // Yield to let UI update
         await new Promise(r => setTimeout(r, 50));
 
-        const results = findAstrologicalEvents(swe, start, end, groupA, groupB, orb, isOpposedMode);
+        currentResults = findAstrologicalEvents(swe, start, end, groupA, groupB, orb, isOpposedMode);
+        currentSearchMode = searchModeSelect.value;
 
-        renderResults(results, groupA, groupB, isOpposedMode);
+        renderResults(currentResults, groupA, groupB, isOpposedMode);
         hideStatus();
     } catch (e) {
         console.error(e);
@@ -374,10 +382,12 @@ function getJSDateFromJd(swe, jd) {
 function renderResults(results, groupA, groupB, isOpposedMode) {
     if (results.length === 0) {
         resultsContent.innerHTML = '<p class="placeholder-text">No events found in this time range with the given orb.</p>';
+        downloadCSVBtn.classList.add('hidden');
         return;
     }
 
     resultsContent.innerHTML = '';
+    downloadCSVBtn.classList.remove('hidden');
     results.sort((a, b) => a.exactDate - b.exactDate);
 
     results.forEach(res => {
@@ -422,6 +432,56 @@ function renderResults(results, groupA, groupB, isOpposedMode) {
         `;
         resultsContent.appendChild(div);
     });
+}
+
+function handleDownloadCSV() {
+    if (!currentResults || currentResults.length === 0) return;
+
+    const isOpposed = currentSearchMode === 'opposed';
+    const headers = ['Date', 'Mode'];
+
+    if (isOpposed) {
+        headers.push('Group A Spread', 'Group B Spread', 'Opposition Deviation');
+    } else {
+        headers.push('Max Spread');
+    }
+
+    // Add headers for all planets in results
+    const firstResult = currentResults[0];
+    const allPlanets = [...firstResult.planetPositionsA, ...firstResult.planetPositionsB];
+    allPlanets.forEach(p => headers.push(`${p.name} Longitude`));
+
+    const csvRows = [headers.join(',')];
+
+    currentResults.forEach(res => {
+        const row = [];
+        row.push(`"${res.exactDate.toISOString()}"`);
+        row.push(`"${currentSearchMode}"`);
+
+        if (isOpposed) {
+            row.push(res.maxDistA.toFixed(4));
+            row.push(res.maxDistB.toFixed(4));
+            row.push(res.maxOppDev.toFixed(4));
+        } else {
+            row.push(res.maxDistA.toFixed(4));
+        }
+
+        const planetPositions = [...res.planetPositionsA, ...res.planetPositionsB];
+        planetPositions.forEach(p => row.push(p.longitude.toFixed(4)));
+
+        csvRows.push(row.join(','));
+    });
+
+    const csvContent = csvRows.join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', `astrology_events_${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
 }
 
 function buildConfigURL() {
@@ -469,7 +529,8 @@ function saveToLocalStorage() {
         orb: orbInput.value,
         searchMode: searchModeSelect.value,
         planetsA,
-        planetsB
+        planetsB,
+        showPlanetPositions: showPlanetPositionsCheckbox.checked
     };
     localStorage.setItem(LS_KEY, JSON.stringify(config));
 }
@@ -495,6 +556,9 @@ function loadFromLocalStorage() {
             document.querySelectorAll('input[data-group="B"]').forEach(cb => {
                 cb.checked = config.planetsB.includes(cb.value);
             });
+        }
+        if (config.showPlanetPositions !== undefined) {
+            showPlanetPositionsCheckbox.checked = config.showPlanetPositions;
         }
     } catch (e) {
         // Ignore corrupt data

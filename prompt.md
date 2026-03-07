@@ -1,3 +1,7 @@
+Read current code.
+
+Provide option to download results in csv.
+
 Need to find conjunctions between 2 or more planets across a time range.
 
 It can be frontend only web app. Use swisseph-wasm whose readme is in swisseph-wasm/README.md 

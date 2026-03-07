@@ -120,6 +120,45 @@ h2 {
     padding-bottom: 0.5rem;
 }
 
+.results-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    border-bottom: 1px solid var(--glass-border);
+    margin-bottom: 1.5rem;
+}
+
+.results-header h2 {
+    border-bottom: none;
+    margin-bottom: 0.5rem;
+}
+
+.download-btn {
+    background: rgba(139, 92, 246, 0.15);
+    border: 1px solid var(--accent);
+    color: var(--text-main);
+    padding: 0.5rem 0.75rem;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-family: inherit;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.download-btn:hover {
+    background: var(--accent);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3);
+}
+
+.download-btn.hidden {
+    display: none;
+}
+
 h3 {
     font-size: 1.1rem;
     margin-bottom: 1rem;
