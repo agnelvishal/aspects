@@ -10,6 +10,11 @@ const planetsGridB = document.getElementById('planetsGridB');
 const startDateInput = document.getElementById('startDate');
 const endDateInput = document.getElementById('endDate');
 const orbInput = document.getElementById('orb');
+const orbAInput = document.getElementById('orbA');
+const orbBInput = document.getElementById('orbB');
+const orbOppInput = document.getElementById('orbOpp');
+const orbSingleContainer = document.getElementById('orbSingleContainer');
+const orbOpposedContainer = document.getElementById('orbOpposedContainer');
 const findBtn = document.getElementById('findBtn');
 const downloadCSVBtn = document.getElementById('downloadCSVBtn');
 const copyLinkBtn = document.getElementById('copyLinkBtn');
@@ -66,6 +71,9 @@ function initUI() {
     startDateInput.addEventListener('input', saveToLocalStorage);
     endDateInput.addEventListener('input', saveToLocalStorage);
     orbInput.addEventListener('input', saveToLocalStorage);
+    orbAInput.addEventListener('input', saveToLocalStorage);
+    orbBInput.addEventListener('input', saveToLocalStorage);
+    orbOppInput.addEventListener('input', saveToLocalStorage);
 
     // Save when planet checkboxes change (delegated on grids)
     planetsGridA.addEventListener('change', saveToLocalStorage);
@@ -95,15 +103,16 @@ function createCheckboxLabel(planet, groupPrefix) {
 }
 
 function handleModeChange() {
-    const orbLabel = document.querySelector('label[for="orb"]');
     if (searchModeSelect.value === 'conjunct') {
         groupBContainer.classList.add('hidden');
         groupALabel.textContent = 'Select Planets (Min 2)';
-        orbLabel.textContent = 'Orb (Tolerance in Degrees)';
+        orbSingleContainer.classList.remove('hidden');
+        orbOpposedContainer.classList.add('hidden');
     } else {
         groupBContainer.classList.remove('hidden');
         groupALabel.textContent = 'Group A (Conjunct)';
-        orbLabel.textContent = 'Orb (Max spread for Groups A, B, and Opposition)';
+        orbSingleContainer.classList.add('hidden');
+        orbOpposedContainer.classList.remove('hidden');
     }
 }
 
@@ -181,11 +190,22 @@ async function handleFindEvents() {
 
     const startStr = startDateInput.value;
     const endStr = endDateInput.value;
-    const orb = parseFloat(orbInput.value);
 
-    if (!startStr || !endStr || isNaN(orb)) {
-        showStatus('Please fill all configuration fields correctly.', true);
-        return;
+    let orb, orbA, orbB, orbOpp;
+    if (isOpposedMode) {
+        orbA = parseFloat(orbAInput.value);
+        orbB = parseFloat(orbBInput.value);
+        orbOpp = parseFloat(orbOppInput.value);
+        if (!startStr || !endStr || isNaN(orbA) || isNaN(orbB) || isNaN(orbOpp)) {
+            showStatus('Please fill all configuration fields correctly.', true);
+            return;
+        }
+    } else {
+        orb = parseFloat(orbInput.value);
+        if (!startStr || !endStr || isNaN(orb)) {
+            showStatus('Please fill all configuration fields correctly.', true);
+            return;
+        }
     }
 
     const start = new Date(startStr);
@@ -214,7 +234,7 @@ async function handleFindEvents() {
         // Yield to let UI update
         await new Promise(r => setTimeout(r, 50));
 
-        currentResults = findAstrologicalEvents(swe, start, end, groupA, groupB, orb, isOpposedMode);
+        currentResults = findAstrologicalEvents(swe, start, end, groupA, groupB, isOpposedMode ? { orbA, orbB, orbOpp } : orb, isOpposedMode);
         currentSearchMode = searchModeSelect.value;
 
         renderResults(currentResults, groupA, groupB, isOpposedMode);
@@ -244,8 +264,13 @@ function calculatePosition(swe, jd, planet_se_id) {
     }
 }
 
-function findAstrologicalEvents(swe, start, end, groupA, groupB, orb, isOpposedMode) {
+function findAstrologicalEvents(swe, start, end, groupA, groupB, orbParam, isOpposedMode) {
     const results = [];
+
+    // In opposed mode, orbParam is { orbA, orbB, orbOpp }; otherwise it's a single number
+    const orbA = isOpposedMode ? orbParam.orbA : orbParam;
+    const orbB = isOpposedMode ? orbParam.orbB : orbParam;
+    const orbOpp = isOpposedMode ? orbParam.orbOpp : orbParam;
 
     // Check if Moon is included to adjust step size (Moon moves ~13 deg/day)
     const hasMoon = groupA.some(p => p.se_id === 1) || groupB.some(p => p.se_id === 1);
@@ -271,15 +296,15 @@ function findAstrologicalEvents(swe, start, end, groupA, groupB, orb, isOpposedM
         let maxOppDev = 0;
 
         if (!isOpposedMode) {
-            isValid = maxDistA <= orb;
+            isValid = maxDistA <= orbA;
             eventError = maxDistA;
         } else {
             const positionsB = groupB.map(p => calculatePosition(swe, currentJd, p.se_id));
             maxDistB = getMaxDistance(positionsB);
             maxOppDev = getMaxOppositionDeviation(positionsA, positionsB);
 
-            isValid = (maxDistA <= orb) && (maxDistB <= orb) && (maxOppDev <= orb);
-            eventError = Math.max(maxDistA, maxDistB, maxOppDev); // error metric is the largest deviation among the constraints
+            isValid = (maxDistA <= orbA) && (maxDistB <= orbB) && (maxOppDev <= orbOpp);
+            eventError = Math.max(maxDistA / orbA, maxDistB / orbB, maxOppDev / orbOpp); // normalized error metric
         }
 
         if (isValid && !inEvent) {
@@ -524,6 +549,9 @@ function buildConfigURL() {
     params.set('startDate', startDateInput.value);
     params.set('endDate', endDateInput.value);
     params.set('orb', orbInput.value);
+    params.set('orbA', orbAInput.value);
+    params.set('orbB', orbBInput.value);
+    params.set('orbOpp', orbOppInput.value);
     params.set('searchMode', searchModeSelect.value);
 
     const planetsA = Array.from(document.querySelectorAll('input[data-group="A"]:checked')).map(cb => cb.value);
@@ -565,6 +593,9 @@ function saveToLocalStorage() {
         startDate: startDateInput.value,
         endDate: endDateInput.value,
         orb: orbInput.value,
+        orbA: orbAInput.value,
+        orbB: orbBInput.value,
+        orbOpp: orbOppInput.value,
         searchMode: searchModeSelect.value,
         planetsA,
         planetsB,
@@ -583,6 +614,9 @@ function loadFromLocalStorage() {
         if (config.startDate) startDateInput.value = config.startDate;
         if (config.endDate) endDateInput.value = config.endDate;
         if (config.orb !== undefined) orbInput.value = config.orb;
+        if (config.orbA !== undefined) orbAInput.value = config.orbA;
+        if (config.orbB !== undefined) orbBInput.value = config.orbB;
+        if (config.orbOpp !== undefined) orbOppInput.value = config.orbOpp;
         if (config.searchMode && ['conjunct', 'opposed'].includes(config.searchMode)) {
             searchModeSelect.value = config.searchMode;
             handleModeChange();
@@ -622,6 +656,15 @@ function loadFromURLParams() {
     }
     if (params.has('orb')) {
         orbInput.value = params.get('orb');
+    }
+    if (params.has('orbA')) {
+        orbAInput.value = params.get('orbA');
+    }
+    if (params.has('orbB')) {
+        orbBInput.value = params.get('orbB');
+    }
+    if (params.has('orbOpp')) {
+        orbOppInput.value = params.get('orbOpp');
     }
     if (params.has('searchMode')) {
         const mode = params.get('searchMode');
