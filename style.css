@@ -232,6 +232,10 @@ select:focus {
     display: none;
 }
 
+.hidden {
+    display: none !important;
+}
+
 .orb-opposed-grid {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
