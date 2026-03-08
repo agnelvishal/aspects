@@ -795,7 +795,7 @@ function parseEventsForDate(wikitext, month, day) {
     return events;
 }
 
-const WIKI_DAYS_WINDOW = 4;
+const WIKI_DAYS_WINDOW = 5;
 
 /**
  * Add days to a UTC Date and return a new Date.
