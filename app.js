@@ -562,6 +562,7 @@ function buildConfigURL() {
 
     if (showAspectedPlanetPositionsCheckbox.checked) params.set('showAspectedPlanetPositions', '1');
     if (showAllPlanetsPositionCheckbox.checked) params.set('showAllPlanetsPosition', '1');
+    if (fetchWikiEventsCheckbox.checked) params.set('fetchWikiEvents', '1');
 
     const url = new URL(window.location.href);
     url.search = params.toString();
